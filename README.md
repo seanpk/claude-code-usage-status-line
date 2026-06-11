@@ -2,9 +2,7 @@
 
 A Claude Code status line script that shows your real-time usage against the 5-hour and 7-day rate limits, with color-coded bars and a countdown to the next reset.
 
-```
-5h ████████░░  80%  ↻47m    7d ████░░░░░░  42%  ↻2d
-```
+<img width="584" height="165" alt="image" src="https://github.com/user-attachments/assets/1c61002b-37c6-4e99-bbcf-67a61fc93053" />
 
 - Green bar: under 50% used
 - Yellow bar: 50–79%
