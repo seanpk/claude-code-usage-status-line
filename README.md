@@ -27,7 +27,7 @@ cd claude-code-usage-status-line
 
 The installer:
 
-1. Copies `claude-usage-status.py` to `~/bin/` (falls back to `~/.local/bin` if `~/bin` doesn't exist; use `--bin-dir` to override)
+1. Copies `claude-code-usage-status-line.py` to `~/bin/` (falls back to `~/.local/bin` if `~/bin` doesn't exist; use `--bin-dir` to override)
 2. Auto-detects Claude config directories (`~/.claude`, `~/.claude-*`) and writes the `statusLine` config into each `settings.json`
 3. Restart Claude Code to activate
 
@@ -57,11 +57,11 @@ You can combine both options:
 
 ## Manual install
 
-1. Copy `claude-usage-status.py` to a directory on your `PATH` and make it executable:
+1. Copy `claude-code-usage-status-line.py` to a directory on your `PATH` and make it executable:
 
    ```bash
-   cp claude-usage-status.py ~/.local/bin/
-   chmod +x ~/.local/bin/claude-usage-status.py
+   cp claude-code-usage-status-line.py ~/.local/bin/
+   chmod +x ~/.local/bin/claude-code-usage-status-line.py
    ```
 
 2. Add the following to each Claude Code `settings.json` you want to configure (e.g. `~/.claude/settings.json`):
@@ -70,7 +70,7 @@ You can combine both options:
    {
      "statusLine": {
        "type": "command",
-       "command": "~/.local/bin/claude-usage-status.py ~/.claude",
+       "command": "~/.local/bin/claude-code-usage-status-line.py ~/.claude",
        "refreshInterval": 60
      }
    }

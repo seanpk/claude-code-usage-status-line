@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs claude-usage-status.py and configures statusLine in Claude Code profiles.
+# Installs claude-code-usage-status-line.py and configures statusLine in Claude Code profiles.
 #
 # Usage:
 #   ./install.sh                                         # auto-detect bin dir and profiles
@@ -10,7 +10,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_SRC="$SCRIPT_DIR/claude-usage-status.py"
+SCRIPT_SRC="$SCRIPT_DIR/claude-code-usage-status-line.py"
 
 # --- Parse arguments ---
 BIN_DIR=""
@@ -73,7 +73,7 @@ if ! printf ':%s:' "$PATH" | grep -q ":${BIN_DIR}:"; then
 fi
 
 # --- Install the script ---
-INSTALL_PATH="$BIN_DIR/claude-usage-status.py"
+INSTALL_PATH="$BIN_DIR/claude-code-usage-status-line.py"
 cp "$SCRIPT_SRC" "$INSTALL_PATH"
 chmod +x "$INSTALL_PATH"
 echo "Installed: $INSTALL_PATH"
