@@ -20,23 +20,39 @@ A Claude Code status line script that shows your real-time usage against the 5-h
 ## Quick install
 
 ```bash
-git clone https://github.com/seanpk/claude-code-status-line.git
-cd claude-code-status-line
+git clone https://github.com/seanpk/claude-code-usage-status-line.git
+cd claude-code-usage-status-line
 ./install.sh
 ```
 
 The installer:
 
-1. Copies `claude-usage-status.py` to `~/bin/`
+1. Copies `claude-usage-status.py` to `~/bin/` (falls back to `~/.local/bin` if `~/bin` doesn't exist; use `--bin-dir` to override)
 2. Auto-detects Claude config directories (`~/.claude`, `~/.claude-*`) and writes the `statusLine` config into each `settings.json`
 3. Restart Claude Code to activate
+
+### Specifying an install location
+
+```bash
+./install.sh --bin-dir ~/.local/bin
+# short form:
+./install.sh -d ~/.local/bin
+```
+
+The script will warn you if the chosen directory is not on your `PATH`.
 
 ### Multiple profiles
 
 If you run multiple Claude Code profiles (e.g. separate configs for different accounts), pass the config dirs explicitly:
 
 ```bash
-./install.sh ~/.claude ~/.claude-work ~/.claude-personal
+./install.sh ~/.claude ~/.claude-home ~/.claude-work
+```
+
+You can combine both options:
+
+```bash
+./install.sh --bin-dir ~/.local/bin ~/.claude ~/.claude-home ~/.claude-work
 ```
 
 ## Manual install
@@ -44,8 +60,8 @@ If you run multiple Claude Code profiles (e.g. separate configs for different ac
 1. Copy `claude-usage-status.py` to a directory on your `PATH` and make it executable:
 
    ```bash
-   cp claude-usage-status.py ~/bin/
-   chmod +x ~/bin/claude-usage-status.py
+   cp claude-usage-status.py ~/.local/bin/
+   chmod +x ~/.local/bin/claude-usage-status.py
    ```
 
 2. Add the following to each Claude Code `settings.json` you want to configure (e.g. `~/.claude/settings.json`):
@@ -54,7 +70,7 @@ If you run multiple Claude Code profiles (e.g. separate configs for different ac
    {
      "statusLine": {
        "type": "command",
-       "command": "~/bin/claude-usage-status.py ~/.claude",
+       "command": "~/.local/bin/claude-usage-status.py ~/.claude",
        "refreshInterval": 60
      }
    }
