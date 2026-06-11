@@ -99,9 +99,9 @@ This removes the script from `~/bin/` (or `~/.local/bin/`, or wherever `--bin-di
 
 ## Platform notes
 
-**Linux:** credentials are stored in `~/.claude/.credentials.json` (or the equivalent config dir). This script works as-is.
+**Linux:** credentials are stored in `~/.claude/.credentials.json` (or the equivalent config dir).
 
-**macOS:** Claude Code stores credentials in the macOS keychain, not a `.credentials.json` file, so this script will produce no output on macOS as written. A keychain-aware version would need to use the `security` CLI tool.
+**macOS:** credentials are stored in the keychain under the service name `Claude Code-credentials`. The script reads them via `security find-generic-password -s 'Claude Code-credentials' -w` and falls back to `.credentials.json` if the keychain lookup fails. Note that macOS stores one token for all profiles, so the config-dir argument only affects caching — the usage data shown will be the same across profiles.
 
 ## Development
 

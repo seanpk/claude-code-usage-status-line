@@ -3,6 +3,7 @@
 
 import json
 import os
+import subprocess
 import sys
 import time
 import hashlib
@@ -16,12 +17,32 @@ def get_config_dir():
     return os.path.expanduser('~/.claude')
 
 
-def get_token(config_dir):
-    creds_file = os.path.join(config_dir, '.credentials.json')
+def _parse_token(data):
     try:
-        with open(creds_file) as f:
-            data = json.load(f)
-        return data['claudeAiOauth']['accessToken']
+        return json.loads(data)['claudeAiOauth']['accessToken']
+    except Exception:
+        return None
+
+
+def get_token(config_dir):
+    # macOS stores credentials in the keychain
+    if sys.platform == 'darwin':
+        try:
+            result = subprocess.run(
+                ['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0:
+                token = _parse_token(result.stdout.strip())
+                if token:
+                    return token
+        except Exception:
+            pass
+
+    # Linux (and fallback): credentials file in the config dir
+    try:
+        with open(os.path.join(config_dir, '.credentials.json')) as f:
+            return _parse_token(f.read())
     except Exception:
         return None
 
