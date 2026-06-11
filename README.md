@@ -105,6 +105,16 @@ This removes the script from `~/bin/` (or `~/.local/bin/`, or wherever `--bin-di
 
 **macOS:** Claude Code stores credentials in the macOS keychain, not a `.credentials.json` file, so this script will produce no output on macOS as written. A keychain-aware version would need to use the `security` CLI tool.
 
+## Development
+
+Tests use [bats-core](https://github.com/bats-core/bats-core). Install it, then:
+
+```bash
+bats tests/
+```
+
+Tests install into `./tmp/` (gitignored) using explicit `--bin-dir` and config dir arguments so they never touch your real `~/.claude*` profiles.
+
 ## License
 
 MIT
