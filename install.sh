@@ -10,40 +10,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_SRC="$SCRIPT_DIR/claude-code-usage-status-line.py"
+# shellcheck source=_lib.sh
+source "$SCRIPT_DIR/_lib.sh"
 
-# --- Parse arguments ---
-BIN_DIR=""
-CONFIG_ARGS=()
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -d|--bin-dir)
-            [[ $# -lt 2 ]] && { echo "Error: $1 requires an argument" >&2; exit 1; }
-            BIN_DIR="${2/#\~/$HOME}"
-            shift 2
-            ;;
-        -d=*|--bin-dir=*)
-            val="${1#*=}"
-            BIN_DIR="${val/#\~/$HOME}"
-            shift
-            ;;
-        -*)
-            echo "Error: unknown option: $1" >&2
-            echo "Usage: $0 [--bin-dir DIR] [config-dir ...]" >&2
-            exit 1
-            ;;
-        *)
-            CONFIG_ARGS+=("$1")
-            shift
-            ;;
-    esac
-done
+parse_args "$@"
 
 # --- Resolve bin directory ---
-# Common user-local bin directories, checked in order
-USER_BIN_CANDIDATES=("$HOME/bin" "$HOME/.local/bin")
-
 if [[ -n "$BIN_DIR" ]]; then
     mkdir -p "$BIN_DIR"
 else
@@ -73,29 +45,18 @@ if ! printf ':%s:' "$PATH" | grep -q ":${BIN_DIR}:"; then
 fi
 
 # --- Install the script ---
-INSTALL_PATH="$BIN_DIR/claude-code-usage-status-line.py"
-cp "$SCRIPT_SRC" "$INSTALL_PATH"
+INSTALL_PATH="$BIN_DIR/$SCRIPT_NAME"
+cp "$SCRIPT_DIR/$SCRIPT_NAME" "$INSTALL_PATH"
 chmod +x "$INSTALL_PATH"
 echo "Installed: $INSTALL_PATH"
 
-# --- Resolve which config dirs to configure ---
-if [[ ${#CONFIG_ARGS[@]} -gt 0 ]]; then
-    CONFIG_DIRS=("${CONFIG_ARGS[@]}")
-else
-    CONFIG_DIRS=()
-    [[ -d "$HOME/.claude" ]] && CONFIG_DIRS+=("$HOME/.claude")
-    for dir in "$HOME"/.claude-*; do
-        [[ -d "$dir" ]] && CONFIG_DIRS+=("$dir")
-    done
-fi
-
+# --- Configure each profile ---
 if [[ ${#CONFIG_DIRS[@]} -eq 0 ]]; then
     echo "No Claude config directories found. Pass them as arguments:"
     echo "  $0 ~/.claude ~/.claude-work"
     exit 1
 fi
 
-# --- Configure each profile ---
 for config_dir in "${CONFIG_DIRS[@]}"; do
     config_dir="$(realpath "$config_dir" 2>/dev/null || echo "$config_dir")"
     if [[ ! -d "$config_dir" ]]; then

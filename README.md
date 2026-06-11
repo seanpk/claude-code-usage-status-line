@@ -55,6 +55,18 @@ You can combine both options:
 ./install.sh --bin-dir ~/.local/bin ~/.claude ~/.claude-home ~/.claude-work
 ```
 
+## Uninstall
+
+```bash
+./uninstall.sh
+```
+
+This removes the script from `~/bin/` (or `~/.local/bin/`, or wherever `--bin-dir` points) and clears the `statusLine` key from every auto-detected Claude profile. Pass explicit config dirs to limit which profiles are touched:
+
+```bash
+./uninstall.sh ~/.claude ~/.claude-work
+```
+
 ## Manual install
 
 1. Copy `claude-code-usage-status-line.py` to a directory on your `PATH` and make it executable:
