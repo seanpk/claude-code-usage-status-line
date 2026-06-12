@@ -2,7 +2,7 @@
 
 A Claude Code status line script showing current working directory, model, effort level, rate-limit usage bars, context window percentage, and cache hit rate — all in one line.
 
-<img width="584" height="165" alt="image" src="https://github.com/user-attachments/assets/1c61002b-37c6-4e99-bbcf-67a61fc93053" />
+![screenshot](screenshot.png)
 
 ```
 my-project | Sonnet [high] | 5h ████░░░░░░  42% ↻47m  7d ██░░░░░░░░  18% ↻2d | ctx ██░░░░░░░░  17%  cache  71%
