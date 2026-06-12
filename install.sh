@@ -77,7 +77,7 @@ def tilde(p):
 
 status_line = {
     "type": "command",
-    "command": f"{tilde(install_path)} {tilde(config_dir)}",
+    "command": tilde(install_path),
     "refreshInterval": 60,
 }
 

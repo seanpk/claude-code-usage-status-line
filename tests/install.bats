@@ -42,15 +42,14 @@ assert sl['refreshInterval'] == 60, f'wrong interval: {sl[\"refreshInterval\"]}'
     [ "$status" -eq 0 ]
 }
 
-@test "statusLine command references the config dir" {
+@test "statusLine command has no extra arguments" {
     "$REPO/install.sh" --bin-dir "$BIN" "$CFG"
     run python3 -c "
-import json, os
+import json
 d = json.load(open('$CFG/settings.json'))
 cmd = d['statusLine']['command']
-home = os.path.expanduser('~')
-cfg_tilde = '~' + '$CFG'[len(home):]
-assert '$CFG' in cmd or cfg_tilde in cmd, f'config dir not in command: {cmd}'
+# Script reads session data from stdin — no config dir argument needed
+assert cmd.count(' ') == 0, f'unexpected arguments in command: {cmd}'
 "
     [ "$status" -eq 0 ]
 }
@@ -86,18 +85,13 @@ assert 'old-script' not in d['statusLine']['command'], 'stale command not replac
     [ -f "$CFG2/settings.json" ]
 }
 
-@test "each config dir references itself in the command" {
+@test "all config dirs get the same command (no per-dir arg)" {
     "$REPO/install.sh" --bin-dir "$BIN" "$CFG" "$CFG2"
     run python3 -c "
-import json, os
-home = os.path.expanduser('~')
-def tilde(p):
-    return '~' + p[len(home):] if p.startswith(home + '/') else p
-
-for cfg in ['$CFG', '$CFG2']:
-    d = json.load(open(cfg + '/settings.json'))
-    cmd = d['statusLine']['command']
-    assert tilde(cfg) in cmd or cfg in cmd, f'{cfg} not in command: {cmd}'
+import json
+cmd1 = json.load(open('$CFG/settings.json'))['statusLine']['command']
+cmd2 = json.load(open('$CFG2/settings.json'))['statusLine']['command']
+assert cmd1 == cmd2, f'commands differ: {cmd1!r} vs {cmd2!r}'
 "
     [ "$status" -eq 0 ]
 }

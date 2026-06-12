@@ -1,17 +1,22 @@
 # claude-code-status-line
 
-A Claude Code status line script that shows your real-time usage against the 5-hour and 7-day rate limits, with color-coded bars and a countdown to the next reset.
+A Claude Code status line script showing current working directory, model, effort level, rate-limit usage bars, context window percentage, and cache hit rate — all in one line.
 
 <img width="584" height="165" alt="image" src="https://github.com/user-attachments/assets/1c61002b-37c6-4e99-bbcf-67a61fc93053" />
 
-- Green bar: under 50% used
-- Yellow bar: 50–79%
-- Red bar: 80%+
-- `↻` shows time until the window resets
+```
+my-project | Sonnet [high] | 5h ████░░░░░░  42% ↻47m  7d ██░░░░░░░░  18% ↻2d | ctx ██░░░░░░░░  17%  cache  71%
+```
+
+**Rate limit bars** (green <50%, yellow 50–79%, red 80%+) — `↻` shows time until window resets
+
+**Context bar** — same color scale
+
+**Cache hit rate** — inverse scale (green ≥70%, yellow 30–69%, red <30%); omitted before the first API call in a session
 
 ## Requirements
 
-- [Claude Code](https://claude.ai/code) with an active subscription (OAuth credentials)
+- [Claude Code](https://claude.ai/code) with an active subscription (Pro or Max)
 - Python 3.6+
 - Linux or macOS
 
@@ -80,28 +85,36 @@ This removes the script from `~/bin/` (or `~/.local/bin/`, or wherever `--bin-di
    {
      "statusLine": {
        "type": "command",
-       "command": "~/.local/bin/claude-code-usage-status-line.py ~/.claude",
+       "command": "~/.local/bin/claude-code-usage-status-line.py",
        "refreshInterval": 60
      }
    }
    ```
 
-   Replace `~/.claude` with the actual config directory for that profile.
-
 3. Restart Claude Code.
 
 ## How it works
 
-- On each refresh, the script reads `<config_dir>/.credentials.json` for the OAuth access token (this file is written by Claude Code on Linux; macOS stores credentials in the keychain instead — see below)
-- It calls `https://api.anthropic.com/api/oauth/usage` with the `anthropic-beta: oauth-2025-04-20` header
-- Results are cached in `/tmp/claude-usage-<hash>.txt` for 58 seconds to avoid hammering the API (Claude Code refreshes every 60s)
-- If the credentials file is missing or the token is absent, the script exits silently — safe to configure on profiles not yet logged in
+Claude Code sends a JSON object to the script via stdin on every update (after each assistant message, after `/compact`, and on a 60-second timer). The script reads that data and prints the formatted status line — no credentials, no API calls, no cache files needed.
+
+Fields used from the session JSON:
+
+| Field | Used for |
+|-------|----------|
+| `workspace.current_dir` | cwd section |
+| `model.display_name` | model section |
+| `effort.level` | effort tag (omitted when absent) |
+| `rate_limits.five_hour / seven_day` | usage bars + reset countdown |
+| `context_window.used_percentage` | context bar |
+| `context_window.current_usage` | cache hit rate |
+
+The `rate_limits` field is only present for Pro/Max subscribers after the first API response in a session; the section is omitted silently when absent.
 
 ## Platform notes
 
-**Linux:** credentials are stored in `~/.claude/.credentials.json` (or the equivalent config dir).
+**Linux and macOS:** the script works identically — all data comes from Claude Code via stdin, so no credential reading or keychain access is needed.
 
-**macOS:** credentials are stored in the keychain under the service name `Claude Code-credentials`. The script reads them via `security find-generic-password -s 'Claude Code-credentials' -w` and falls back to `.credentials.json` if the keychain lookup fails. Note that macOS stores one token for all profiles, so the config-dir argument only affects caching — the usage data shown will be the same across profiles.
+**Windows:** not currently supported (the script uses a Unix shebang and is not tested on Windows).
 
 ## Development
 
@@ -111,7 +124,7 @@ Tests use [bats-core](https://github.com/bats-core/bats-core). Install it, then:
 bats tests/
 ```
 
-Tests install into `./tmp/` (gitignored) using explicit `--bin-dir` and config dir arguments so they never touch your real `~/.claude*` profiles.
+Tests install into `./tmp/` (gitignored) using explicit `--bin-dir` and config dir arguments so they never touch your real `~/.claude*` profiles. `tests/script.bats` tests the Python script directly by piping mock JSON via stdin.
 
 ## License
 

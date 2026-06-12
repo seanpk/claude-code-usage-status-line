@@ -1,163 +1,118 @@
 #!/usr/bin/env python3
-"""Claude Code status line: shows 5h and 7d usage utilization from the Anthropic OAuth usage API."""
+"""Claude Code status line: cwd | model[effort] | rate limits | context + cache hit rate"""
 
 import json
 import os
-import subprocess
 import sys
 import time
-import hashlib
-import urllib.request
-from datetime import datetime, timezone
 
 
-def get_config_dir():
-    if len(sys.argv) > 1:
-        return os.path.expanduser(sys.argv[1])
-    return os.path.expanduser('~/.claude')
+GREEN  = '\033[32m'
+YELLOW = '\033[33m'
+RED    = '\033[31m'
+RESET  = '\033[0m'
 
 
-def _parse_token(data):
+def read_session():
     try:
-        return json.loads(data)['claudeAiOauth']['accessToken']
-    except Exception:
-        return None
-
-
-def get_token(config_dir):
-    # macOS stores credentials in the keychain
-    if sys.platform == 'darwin':
-        try:
-            result = subprocess.run(
-                ['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
-                capture_output=True, text=True, timeout=5,
-            )
-            if result.returncode == 0:
-                token = _parse_token(result.stdout.strip())
-                if token:
-                    return token
-        except Exception:
-            pass
-
-    # Linux (and fallback): credentials file in the config dir
-    try:
-        with open(os.path.join(config_dir, '.credentials.json')) as f:
-            return _parse_token(f.read())
-    except Exception:
-        return None
-
-
-def fetch_usage(token):
-    req = urllib.request.Request(
-        'https://api.anthropic.com/api/oauth/usage',
-        headers={
-            'Authorization': f'Bearer {token}',
-            'anthropic-beta': 'oauth-2025-04-20',
-            'Content-Type': 'application/json',
-        }
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return json.loads(resp.read())
-    except Exception:
-        return None
-
-
-def get_cache_path(config_dir):
-    h = hashlib.md5(config_dir.encode()).hexdigest()[:8]
-    return f'/tmp/claude-usage-{h}.txt'
-
-
-def load_cache(cache_path, ttl=58):
-    try:
-        if os.path.exists(cache_path):
-            age = time.time() - os.path.getmtime(cache_path)
-            if age < ttl:
-                with open(cache_path) as f:
-                    return f.read().rstrip()
+        if not sys.stdin.isatty():
+            return json.load(sys.stdin)
     except Exception:
         pass
-    return None
+    return {}
 
 
-def save_cache(cache_path, content):
-    try:
-        with open(cache_path, 'w') as f:
-            f.write(content)
-    except Exception:
-        pass
-
-
-def format_reset(iso_str):
-    try:
-        dt = datetime.fromisoformat(iso_str.replace('Z', '+00:00'))
-        diff = dt - datetime.now(timezone.utc)
-        secs = max(0, int(diff.total_seconds()))
-        if secs < 3600:
-            return f'{secs // 60}m'
-        elif secs < 86400:
-            return f'{secs // 3600}h'
-        else:
-            return f'{secs // 86400}d'
-    except Exception:
-        return ''
+def ansi_color(pct, low=50, high=80):
+    if pct < low:
+        return GREEN
+    elif pct < high:
+        return YELLOW
+    return RED
 
 
 def color_bar(pct):
     if pct is None:
         return '?'
-    if pct < 50:
-        color = '\033[32m'
-    elif pct < 80:
-        color = '\033[33m'
-    else:
-        color = '\033[31m'
-    reset = '\033[0m'
+    color = ansi_color(pct)
     filled = round(pct / 10)
-    empty = 10 - filled
-    return f'{color}{"█" * filled}{"░" * empty}{reset} {pct:2.0f}%'
+    return f'{color}{"█" * filled}{"░" * (10 - filled)}{RESET} {pct:2.0f}%'
+
+
+def format_reset(epoch_secs):
+    secs = max(0, int(epoch_secs - time.time()))
+    if secs < 3600:
+        return f'{secs // 60}m'
+    elif secs < 86400:
+        return f'{secs // 3600}h'
+    return f'{secs // 86400}d'
+
+
+def section_cwd(data):
+    cwd = (data.get('workspace') or {}).get('current_dir') or data.get('cwd', '')
+    return os.path.basename(cwd) if cwd else None
+
+
+def section_model(data):
+    name = (data.get('model') or {}).get('display_name', '')
+    if not name:
+        return None
+    effort = (data.get('effort') or {}).get('level', '')
+    return f'{name} [{effort}]' if effort else name
+
+
+def section_rate_limits(data):
+    rl = data.get('rate_limits')
+    if not rl:
+        return None
+    parts = []
+    for key, label in [('five_hour', '5h'), ('seven_day', '7d')]:
+        w = rl.get(key)
+        if not w:
+            continue
+        pct = w.get('used_percentage')
+        resets_at = w.get('resets_at')
+        piece = f'{label} {color_bar(pct)}'
+        if resets_at:
+            piece += f' ↻{format_reset(resets_at)}'
+        parts.append(piece)
+    return '  '.join(parts) if parts else None
+
+
+def section_context(data):
+    ctx = data.get('context_window') or {}
+    pct = ctx.get('used_percentage')
+    if pct is None:
+        return None
+
+    parts = [f'ctx {color_bar(pct)}']
+
+    usage = ctx.get('current_usage')
+    if usage:
+        cache_read  = usage.get('cache_read_input_tokens', 0) or 0
+        cache_write = usage.get('cache_creation_input_tokens', 0) or 0
+        input_tok   = usage.get('input_tokens', 0) or 0
+        total = cache_read + cache_write + input_tok
+        if total > 0:
+            hit_pct = cache_read / total * 100
+            color = GREEN if hit_pct >= 70 else YELLOW if hit_pct >= 30 else RED
+            parts.append(f'cache {color}{hit_pct:2.0f}%{RESET}')
+
+    return '  '.join(parts)
 
 
 def main():
-    # Consume stdin (Claude Code sends session JSON we don't use)
-    try:
-        if not sys.stdin.isatty():
-            sys.stdin.read()
-    except Exception:
-        pass
+    data = read_session()
 
-    config_dir = get_config_dir()
-    cache_path = get_cache_path(config_dir)
+    sections = [
+        section_cwd(data),
+        section_model(data),
+        section_rate_limits(data),
+        section_context(data),
+    ]
 
-    cached = load_cache(cache_path)
-    if cached:
-        print(cached)
-        return
-
-    token = get_token(config_dir)
-    if not token:
-        return
-
-    data = fetch_usage(token)
-    if not data:
-        return
-
-    h5 = data.get('five_hour', {}).get('utilization')
-    h5_reset = data.get('five_hour', {}).get('resets_at', '')
-    d7 = data.get('seven_day', {}).get('utilization')
-    d7_reset = data.get('seven_day', {}).get('resets_at', '')
-
-    parts = [f'5h {color_bar(h5)}']
-    if h5_reset:
-        parts[-1] += f' ↻{format_reset(h5_reset)}'
-
-    parts.append(f'7d {color_bar(d7)}')
-    if d7_reset:
-        parts[-1] += f' ↻{format_reset(d7_reset)}'
-
-    output = '  '.join(parts)
-    save_cache(cache_path, output)
-    print(output)
+    output = ' | '.join(s for s in sections if s)
+    if output:
+        print(output)
 
 
 if __name__ == '__main__':
