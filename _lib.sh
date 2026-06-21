@@ -36,8 +36,16 @@ parse_args() {
 
     if [[ ${#CONFIG_DIRS[@]} -eq 0 ]]; then
         [[ -d "$HOME/.claude" ]] && CONFIG_DIRS+=("$HOME/.claude")
+        # nullglob so a non-matching glob expands to nothing instead of the
+        # literal pattern (which would otherwise iterate once and fail -d).
+        shopt -s nullglob
         for dir in "$HOME"/.claude-*; do
             [[ -d "$dir" ]] && CONFIG_DIRS+=("$dir")
         done
+        shopt -u nullglob
     fi
+
+    # Never let the exit status of the last test above propagate out: under
+    # `set -e` a failing -d check here would abort the caller.
+    return 0
 }
