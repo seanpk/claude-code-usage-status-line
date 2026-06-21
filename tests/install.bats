@@ -122,3 +122,25 @@ assert cmd1 == cmd2, f'commands differ: {cmd1!r} vs {cmd2!r}'
     [ "$status" -eq 0 ]
     [ -f "$BIN/claude-code-usage-status-line.py" ]
 }
+
+# Regression: auto-detect must not abort under `set -e` when the only profile
+# is the default ~/.claude and no ~/.claude-* profiles exist. The trailing -d
+# test in parse_args used to leave a non-zero status and kill the script.
+@test "auto-detects default ~/.claude with no ~/.claude-* profiles" {
+    HOME_DIR="$TMP/home"
+    mkdir -p "$HOME_DIR/.claude"
+    run env HOME="$HOME_DIR" "$REPO/install.sh" --bin-dir "$BIN"
+    [ "$status" -eq 0 ]
+    [ -f "$HOME_DIR/.claude/settings.json" ]
+}
+
+# Regression: with no claude profiles, parse_args must not silently abort under
+# `set -e`. install.sh should reach its own check and exit with a helpful message,
+# not die mid-run inside parse_args.
+@test "reports helpfully when no claude profiles exist" {
+    HOME_DIR="$TMP/emptyhome"
+    mkdir -p "$HOME_DIR"
+    run env HOME="$HOME_DIR" "$REPO/install.sh" --bin-dir "$BIN"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"No Claude config directories found"* ]]
+}
